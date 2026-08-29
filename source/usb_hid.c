@@ -470,6 +470,8 @@ static int usb_hid_worker(void *arg)
 		usb_devices[i].valid = false;
 
 	/* USB_HID supports 16 handles, libogc uses handle 0, so we use handle 15...*/
+	extern u32 g_oh1_sig; extern int g_oh1_ok;
+	memlog("usb_hid_worker start: oh1_sig=0x%04x oh1_ok=%d\n", g_oh1_sig, g_oh1_ok);
 	ret = os_open("/dev/usb/hid", 15);
 	memlog("hid open(mode 15): %d\n", ret);
 	if (ret < 0)

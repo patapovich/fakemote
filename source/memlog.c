@@ -4,7 +4,6 @@
 #include "utils.h"
 #include "tools.h"
 
-extern void MEM2_Prot(u32 flag);
 
 /* Ring log at a fixed MEM2 location readable from the PPC side
  * (PPC 0x93200000). GX's MEM2 heap ends at 0x93000000 and IOS
@@ -31,7 +30,6 @@ void memlog(const char *fmt, ...)
 	int n;
 
 	if (!s_initialized) {
-		MEM2_Prot(0); /* ensure PPC can see MEM2 writes */
 		s_log->magic = MEMLOG_MAGIC;
 		s_log->len = 0;
 		s_initialized = 1;

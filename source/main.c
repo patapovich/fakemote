@@ -19,6 +19,9 @@
 #include "usb_hid.h"
 #include "utils.h"
 
+u32 g_oh1_sig = 0;
+int g_oh1_ok = 1;
+
 /* OH1 module hook information */
 #define OH1_IOS_ReceiveMessage_ADDR1 0x138b365c
 #define OH1_IOS_ResourceReply_ADDR1  0x138b36f4
@@ -468,7 +471,7 @@ static s32 Patch_OH1UsbModule(void)
 
 	/* Check version */
 	u32 bytes = *(u16 *)OH1_IOS_ReceiveMessage_ADDR1;
-	memlog("OH1 patch: signature=0x%04x\n", bytes);
+	g_oh1_sig = bytes;
 	if (bytes == 0x4778) {
 		addr_recv = OH1_IOS_ReceiveMessage_ADDR1;
 		addr_reply = OH1_IOS_ResourceReply_ADDR1;
@@ -476,7 +479,7 @@ static s32 Patch_OH1UsbModule(void)
 		addr_recv = OH1_IOS_ReceiveMessage_ADDR2;
 		addr_reply = OH1_IOS_ResourceReply_ADDR2;
 	} else {
-		memlog("OH1 patch FAILED: unknown signature, fakemote inert\n");
+		g_oh1_ok = 0;
 		return IOS_ENOENT;
 	}
 
@@ -491,6 +494,7 @@ static s32 Patch_OH1UsbModule(void)
 	DCWrite32(addr_reply, 0x4B004718);
 	DCWrite32(addr_reply + 4, (u32)OH1_IOS_ResourceReply_hook);
 
+	g_oh1_ok = 1;
 	return 0;
 }
 
@@ -583,8 +587,6 @@ int main(void)
 	static u8 conf_buffer[CONF_SIZE];
 	int ret;
 
-	memlog("=== fakemote main() entered ===\n");
-
 	/* Print info */
 	svc_write("$IOSVersion: FAKEMOTE:  " __DATE__ " " __TIME__ " 64M "
 		  TOSTRING(FAKEMOTE_MAJOR) "."
@@ -615,7 +617,6 @@ int main(void)
 
 	/* Initialize plugin with patchers */
 	ret = IOS_InitSystem(patchers, sizeof(patchers));
-	memlog("IOS_InitSystem returned %d\n", ret);
 
 	return ret;
 }
