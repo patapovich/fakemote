@@ -1,81 +1,18 @@
 name: Build-memlog-dumper
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/dumper.yml'
 jobs:
   build:
     runs-on: ubuntu-latest
     container: devkitpro/devkitppc:latest
     steps:
-      - name: Write source
+      - name: Write and build
         run: |
-          mkdir -p dumper
-          cat > dumper/main.c <<'EOSRC'
-#include <stdio.h>
-#include <stdlib.h>
-#include <gccore.h>
-#include <fat.h>
-#include <wiiuse/wpad.h>
-
-#define LOG_UNCACHED 0xD3200000u
-#define LOG_MAGIC 0x464d4c47u
-#define LOG_MAX 0x4000u
-
-static void *xfb;
-static GXRModeObj *rmode;
-
-int main(void)
-{
-	VIDEO_Init();
-	WPAD_Init();
-	rmode = VIDEO_GetPreferredMode(NULL);
-	xfb = MEM_K0_TO_K1(SYS_AllocateFramebuffer(rmode));
-	console_init(xfb, 20, 20, rmode->fbWidth, rmode->xfbHeight,
-		     rmode->fbWidth * VI_DISPLAY_PIX_SZ);
-	VIDEO_Configure(rmode);
-	VIDEO_SetNextFramebuffer(xfb);
-	VIDEO_SetBlack(FALSE);
-	VIDEO_Flush();
-	VIDEO_WaitVSync();
-
-	printf("\n\nfakemote memlog dumper\n\n");
-
-	volatile u32 *hdr = (volatile u32 *)LOG_UNCACHED;
-	u32 magic = hdr[0];
-	u32 len = hdr[1];
-
-	printf("magic: %08x len: %u\n", magic, len);
-
-	if (!fatInitDefault()) {
-		printf("FAT init failed!\n");
-	} else {
-		FILE *f = fopen("sd:/fakemote.log", "wb");
-		if (!f) {
-			printf("cannot open sd:/fakemote.log\n");
-		} else {
-			if (magic == LOG_MAGIC && len > 0 && len <= LOG_MAX) {
-				fwrite((const void *)(LOG_UNCACHED + 8), 1, len, f);
-				printf("wrote %u bytes\n", len);
-			} else {
-				fprintf(f, "no log: magic=%08x len=%u\n", magic, len);
-				printf("no valid log found\n");
-			}
-			fclose(f);
-		}
-	}
-
-	printf("\npress HOME to exit\n");
-	while (1) {
-		WPAD_ScanPads();
-		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_HOME)
-			break;
-		VIDEO_WaitVSync();
-	}
-	return 0;
-}
-
-EOSRC
-      - name: Build
-        run: |
-          cd dumper
+          mkdir -p dumper && cd dumper
+          echo "I2luY2x1ZGUgPHN0ZGlvLmg+CiNpbmNsdWRlIDxzdGRsaWIuaD4KI2luY2x1ZGUgPGdjY29yZS5oPgojaW5jbHVkZSA8ZmF0Lmg+CiNpbmNsdWRlIDx3aWl1c2Uvd3BhZC5oPgoKI2RlZmluZSBMT0dfVU5DQUNIRUQgMHhEMzIwMDAwMHUKI2RlZmluZSBMT0dfTUFHSUMgMHg0NjRkNGM0N3UKI2RlZmluZSBMT0dfTUFYIDB4NDAwMHUKCnN0YXRpYyB2b2lkICp4ZmI7CnN0YXRpYyBHWFJNb2RlT2JqICpybW9kZTsKCmludCBtYWluKHZvaWQpCnsKCVZJREVPX0luaXQoKTsKCVdQQURfSW5pdCgpOwoJcm1vZGUgPSBWSURFT19HZXRQcmVmZXJyZWRNb2RlKE5VTEwpOwoJeGZiID0gTUVNX0swX1RPX0sxKFNZU19BbGxvY2F0ZUZyYW1lYnVmZmVyKHJtb2RlKSk7Cgljb25zb2xlX2luaXQoeGZiLCAyMCwgMjAsIHJtb2RlLT5mYldpZHRoLCBybW9kZS0+eGZiSGVpZ2h0LAoJCSAgICAgcm1vZGUtPmZiV2lkdGggKiBWSV9ESVNQTEFZX1BJWF9TWik7CglWSURFT19Db25maWd1cmUocm1vZGUpOwoJVklERU9fU2V0TmV4dEZyYW1lYnVmZmVyKHhmYik7CglWSURFT19TZXRCbGFjayhGQUxTRSk7CglWSURFT19GbHVzaCgpOwoJVklERU9fV2FpdFZTeW5jKCk7CgoJcHJpbnRmKCJcblxuZmFrZW1vdGUgbWVtbG9nIGR1bXBlclxuXG4iKTsKCgl2b2xhdGlsZSB1MzIgKmhkciA9ICh2b2xhdGlsZSB1MzIgKilMT0dfVU5DQUNIRUQ7Cgl1MzIgbWFnaWMgPSBoZHJbMF07Cgl1MzIgbGVuID0gaGRyWzFdOwoKCXByaW50ZigibWFnaWM6ICUwOHggbGVuOiAldVxuIiwgbWFnaWMsIGxlbik7CgoJaWYgKCFmYXRJbml0RGVmYXVsdCgpKSB7CgkJcHJpbnRmKCJGQVQgaW5pdCBmYWlsZWQhXG4iKTsKCX0gZWxzZSB7CgkJRklMRSAqZiA9IGZvcGVuKCJzZDovZmFrZW1vdGUubG9nIiwgIndiIik7CgkJaWYgKCFmKSB7CgkJCXByaW50ZigiY2Fubm90IG9wZW4gc2Q6L2Zha2Vtb3RlLmxvZ1xuIik7CgkJfSBlbHNlIHsKCQkJaWYgKG1hZ2ljID09IExPR19NQUdJQyAmJiBsZW4gPiAwICYmIGxlbiA8PSBMT0dfTUFYKSB7CgkJCQlmd3JpdGUoKGNvbnN0IHZvaWQgKikoTE9HX1VOQ0FDSEVEICsgOCksIDEsIGxlbiwgZik7CgkJCQlwcmludGYoIndyb3RlICV1IGJ5dGVzXG4iLCBsZW4pOwoJCQl9IGVsc2UgewoJCQkJZnByaW50ZihmLCAibm8gbG9nOiBtYWdpYz0lMDh4IGxlbj0ldVxuIiwgbWFnaWMsIGxlbik7CgkJCQlwcmludGYoIm5vIHZhbGlkIGxvZyBmb3VuZFxuIik7CgkJCX0KCQkJZmNsb3NlKGYpOwoJCX0KCX0KCglwcmludGYoIlxucHJlc3MgSE9NRSB0byBleGl0XG4iKTsKCXdoaWxlICgxKSB7CgkJV1BBRF9TY2FuUGFkcygpOwoJCWlmIChXUEFEX0J1dHRvbnNEb3duKDApICYgV1BBRF9CVVRUT05fSE9NRSkKCQkJYnJlYWs7CgkJVklERU9fV2FpdFZTeW5jKCk7Cgl9CglyZXR1cm4gMDsKfQo=" | base64 -d > main.c
           export PATH=$DEVKITPRO/devkitPPC/bin:$PATH
           powerpc-eabi-gcc -mrvl -mcpu=750 -meabi -mhard-float -O2 main.c -o dumper.elf \
             -I$DEVKITPRO/libogc/include -L$DEVKITPRO/libogc/lib/wii \
