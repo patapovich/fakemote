@@ -419,19 +419,19 @@ static void handle_device_change_reply(int host_fd, areply *reply)
 		if (ret != IOS_OK)
 			continue;
 
-		/* We must resume the USB device before interacting with it */
+		/* We must resume the USB device before interacting with it.
+		 * On d2x cIOS for vWii this can fail even though the device
+		 * works, so treat failures as non-fatal. */
 		ret = usb_hid_v5_suspend_resume(host_fd, dev_id, 1, 0);
-		if (ret != IOS_OK) {
-			usb_hid_v5_release(host_fd, dev_id);
-			continue;
-		}
+		if (ret != IOS_OK)
+			DEBUG("suspend_resume failed: %d\n", ret);
 
-		/* We must read the USB device descriptor before interacting with the device */
+		/* Read the USB device descriptor. GETDEVPARAMS fails on d2x
+		 * cIOS for vWii; drivers with hardcoded endpoints work
+		 * without it, so this is also non-fatal. */
 		ret = usb_hid_v5_get_descriptors(host_fd, dev_id, &udd);
-		if (ret != IOS_OK) {
-			usb_hid_v5_release(host_fd, dev_id);
-			continue;
-		}
+		if (ret != IOS_OK)
+			DEBUG("get_descriptors failed: %d\n", ret);
 
 		/* Get a fake Wiimote from the manager */
 		if (!input_devices_add(device, &input_device_usb_ops, &device->input_device)) {
