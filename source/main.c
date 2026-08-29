@@ -468,6 +468,7 @@ static s32 Patch_OH1UsbModule(void)
 
 	/* Check version */
 	u32 bytes = *(u16 *)OH1_IOS_ReceiveMessage_ADDR1;
+	memlog("OH1 patch: signature=0x%04x\n", bytes);
 	if (bytes == 0x4778) {
 		addr_recv = OH1_IOS_ReceiveMessage_ADDR1;
 		addr_reply = OH1_IOS_ResourceReply_ADDR1;
@@ -475,6 +476,7 @@ static s32 Patch_OH1UsbModule(void)
 		addr_recv = OH1_IOS_ReceiveMessage_ADDR2;
 		addr_reply = OH1_IOS_ResourceReply_ADDR2;
 	} else {
+		memlog("OH1 patch FAILED: unknown signature, fakemote inert\n");
 		return IOS_ENOENT;
 	}
 
@@ -581,6 +583,8 @@ int main(void)
 	static u8 conf_buffer[CONF_SIZE];
 	int ret;
 
+	memlog("=== fakemote main() entered ===\n");
+
 	/* Print info */
 	svc_write("$IOSVersion: FAKEMOTE:  " __DATE__ " " __TIME__ " 64M "
 		  TOSTRING(FAKEMOTE_MAJOR) "."
@@ -611,7 +615,7 @@ int main(void)
 
 	/* Initialize plugin with patchers */
 	ret = IOS_InitSystem(patchers, sizeof(patchers));
-	DEBUG("IOS_InitSystem(): %d\n", ret);
+	memlog("IOS_InitSystem returned %d\n", ret);
 
 	return ret;
 }
