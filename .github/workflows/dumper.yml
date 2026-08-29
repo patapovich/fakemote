@@ -1,0 +1,88 @@
+name: Build-memlog-dumper
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitppc:latest
+    steps:
+      - name: Write source
+        run: |
+          mkdir -p dumper
+          cat > dumper/main.c <<'EOSRC'
+#include <stdio.h>
+#include <stdlib.h>
+#include <gccore.h>
+#include <fat.h>
+#include <wiiuse/wpad.h>
+
+#define LOG_UNCACHED 0xD3200000u
+#define LOG_MAGIC 0x464d4c47u
+#define LOG_MAX 0x4000u
+
+static void *xfb;
+static GXRModeObj *rmode;
+
+int main(void)
+{
+	VIDEO_Init();
+	WPAD_Init();
+	rmode = VIDEO_GetPreferredMode(NULL);
+	xfb = MEM_K0_TO_K1(SYS_AllocateFramebuffer(rmode));
+	console_init(xfb, 20, 20, rmode->fbWidth, rmode->xfbHeight,
+		     rmode->fbWidth * VI_DISPLAY_PIX_SZ);
+	VIDEO_Configure(rmode);
+	VIDEO_SetNextFramebuffer(xfb);
+	VIDEO_SetBlack(FALSE);
+	VIDEO_Flush();
+	VIDEO_WaitVSync();
+
+	printf("\n\nfakemote memlog dumper\n\n");
+
+	volatile u32 *hdr = (volatile u32 *)LOG_UNCACHED;
+	u32 magic = hdr[0];
+	u32 len = hdr[1];
+
+	printf("magic: %08x len: %u\n", magic, len);
+
+	if (!fatInitDefault()) {
+		printf("FAT init failed!\n");
+	} else {
+		FILE *f = fopen("sd:/fakemote.log", "wb");
+		if (!f) {
+			printf("cannot open sd:/fakemote.log\n");
+		} else {
+			if (magic == LOG_MAGIC && len > 0 && len <= LOG_MAX) {
+				fwrite((const void *)(LOG_UNCACHED + 8), 1, len, f);
+				printf("wrote %u bytes\n", len);
+			} else {
+				fprintf(f, "no log: magic=%08x len=%u\n", magic, len);
+				printf("no valid log found\n");
+			}
+			fclose(f);
+		}
+	}
+
+	printf("\npress HOME to exit\n");
+	while (1) {
+		WPAD_ScanPads();
+		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_HOME)
+			break;
+		VIDEO_WaitVSync();
+	}
+	return 0;
+}
+
+EOSRC
+      - name: Build
+        run: |
+          cd dumper
+          export PATH=$DEVKITPRO/devkitPPC/bin:$PATH
+          powerpc-eabi-gcc -mrvl -mcpu=750 -meabi -mhard-float -O2 main.c -o dumper.elf \
+            -I$DEVKITPRO/libogc/include -L$DEVKITPRO/libogc/lib/wii \
+            -lfat -lwiiuse -lbte -logc -lm
+          elf2dol dumper.elf boot.dol
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: memlog-dumper
+          path: dumper/boot.dol
