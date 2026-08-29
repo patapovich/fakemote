@@ -2,6 +2,7 @@
 #include "fake_wiimote_mgr.h"
 #include "hci.h"
 #include "hci_state.h"
+#include "utils.h"
 #include "injmessage.h"
 #include "syscalls.h"
 #include "utils.h"
@@ -50,6 +51,7 @@ static inline void fake_wiimote_mgr_check_assign_input_devices(void)
 
 		input_device = input_device_get_unassigned();
 		if (input_device) {
+			memlog("assigning wiimote %d to input device\n", i);
 			input_device_assign_wiimote(input_device, &fake_wiimotes[i]);
 			fake_wiimote_init_state(&fake_wiimotes[i], input_device);
 			fake_wiimotes[i].active = true;
@@ -59,7 +61,13 @@ static inline void fake_wiimote_mgr_check_assign_input_devices(void)
 
 void fake_wiimote_mgr_tick_devices(void)
 {
-	if (hci_can_request_connection())
+	static int last_can = -1;
+	int can = hci_can_request_connection();
+	if (can != last_can) {
+		memlog("hci_can_request_connection: %d\n", can);
+		last_can = can;
+	}
+	if (can)
 		fake_wiimote_mgr_check_assign_input_devices();
 
 	for (int i = 0; i < MAX_FAKE_WIIMOTES; i++) {

@@ -448,9 +448,12 @@ static int ensure_initalized(void)
 		/* Initialize global state */
 		injmessage_init_heap();
 		hci_state_reset();
+		memlog("patched handlers ready\n");
 		input_devices_init();
 		fake_wiimote_mgr_init();
+		memlog("fake_wiimote_mgr_init done\n");
 		usb_hid_init();
+		memlog("usb_hid_init issued\n");
 
 		initialized = 1;
 	}

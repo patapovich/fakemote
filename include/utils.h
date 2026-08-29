@@ -31,6 +31,8 @@
 //#define DEBUG(...) printf(__VA_ARGS__)
 #define DEBUG(...) (void)0
 
+void memlog(const char *fmt, ...);
+
 extern void my_assert_func(const char *file, int line, const char *func, const char *failedexpr);
 
 static inline int memmismatch(const void *restrict a, const void *restrict b, int size)

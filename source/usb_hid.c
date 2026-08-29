@@ -266,7 +266,7 @@ static int usb_device_ops_resume(void *usrdata, fake_wiimote_t *wiimote)
 {
 	usb_input_device_t *device = usrdata;
 
-	DEBUG("usb_device_ops_resume\n");
+	memlog("usb resume op, wiimote assigned\n");
 
 	if (device->suspended) {
 		/* FIXME: Doesn't work properly with DS3.
@@ -360,7 +360,7 @@ static void handle_device_change_reply(int host_fd, areply *reply)
 	int ret;
 	bool found;
 
-	DEBUG("Device change, #Attached devices: %d\n", reply->result);
+	memlog("devchange: %d devices\n", reply->result);
 
 	if (reply->result < 0)
 		return;
@@ -398,7 +398,7 @@ static void handle_device_change_reply(int host_fd, areply *reply)
 		vid = device_change_devices[i].vid;
 		pid = device_change_devices[i].pid;
 		dev_id = device_change_devices[i].device_id;
-		DEBUG("[%d] VID: 0x%04x, PID: 0x%04x, dev_id: 0x%x\n", i, vid, pid, dev_id);
+		memlog("dev[%d]: %x:%x id=0x%x\n", i, vid, pid, dev_id);
 
 		/* Check if we already have that device (same dev_id) connected */
 		if (is_usb_device_connected(dev_id))
@@ -416,6 +416,7 @@ static void handle_device_change_reply(int host_fd, areply *reply)
 
 		/* Now we can attach it to take ownership! */
 		ret = usb_hid_v5_attach(host_fd, dev_id);
+		memlog("attach: %d\n", ret);
 		if (ret != IOS_OK)
 			continue;
 
@@ -423,18 +424,18 @@ static void handle_device_change_reply(int host_fd, areply *reply)
 		 * On d2x cIOS for vWii this can fail even though the device
 		 * works, so treat failures as non-fatal. */
 		ret = usb_hid_v5_suspend_resume(host_fd, dev_id, 1, 0);
-		if (ret != IOS_OK)
-			DEBUG("suspend_resume failed: %d\n", ret);
+		memlog("resume: %d\n", ret);
 
 		/* Read the USB device descriptor. GETDEVPARAMS fails on d2x
 		 * cIOS for vWii; drivers with hardcoded endpoints work
 		 * without it, so this is also non-fatal. */
 		ret = usb_hid_v5_get_descriptors(host_fd, dev_id, &udd);
-		if (ret != IOS_OK)
-			DEBUG("get_descriptors failed: %d\n", ret);
+		memlog("getdevparams: %d\n", ret);
 
 		/* Get a fake Wiimote from the manager */
+		memlog("adding input device\n");
 		if (!input_devices_add(device, &input_device_usb_ops, &device->input_device)) {
+			memlog("input_devices_add FAILED\n");
 			usb_hid_v5_release(host_fd, dev_id);
 			continue;
 		}
@@ -470,11 +471,13 @@ static int usb_hid_worker(void *arg)
 
 	/* USB_HID supports 16 handles, libogc uses handle 0, so we use handle 15...*/
 	ret = os_open("/dev/usb/hid", 15);
+	memlog("hid open(mode 15): %d\n", ret);
 	if (ret < 0)
 		return ret;
 	host_fd = ret;
 
 	ret = os_ioctl(host_fd, USBV5_IOCTL_GETVERSION, NULL, 0, ver, sizeof(ver));
+	memlog("hid getversion: rc=%d ver=0x%x\n", ret, ver[0]);
 	if (ret < 0)
 		return ret;
 

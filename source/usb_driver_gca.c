@@ -173,6 +173,8 @@ int gca_driver_ops_init(usb_input_device_t *device, u16 vid, u16 pid)
 	struct gca_private_data_t *priv = (void *)device->private_data;
 	u8 poll_cmd[1] ATTRIBUTE_ALIGN(32) = {GCA_POLL_CMD};
 
+	memlog("gca init called\n");
+
 	/* Init private state */
 	priv->ir_emu_mode_idx = 0;
 	bm_ir_emulation_state_reset(&priv->ir_emu_state);
@@ -192,6 +194,7 @@ int gca_driver_ops_init(usb_input_device_t *device, u16 vid, u16 pid)
 
 	/* Start the adapter's polling */
 	ret = usb_device_driver_issue_intr_transfer(device, 1, poll_cmd, sizeof(poll_cmd));
+	memlog("gca poll cmd: %d\n", ret);
 	if (ret < 0)
 		return ret;
 
