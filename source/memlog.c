@@ -2,6 +2,7 @@
 #include <string.h>
 #include "types.h"
 #include "utils.h"
+#include "tools.h"
 
 /* Ring log at a fixed MEM2 location readable from the PPC side
  * (PPC 0x93200000). GX's MEM2 heap ends at 0x93000000 and IOS
@@ -45,4 +46,7 @@ void memlog(const char *fmt, ...)
 		s_log->len = 0; /* wrap by truncating */
 	memcpy(&s_log->data[s_log->len], line, n);
 	s_log->len += n;
+
+	/* Flush so the PPC side sees it through uncached MEM2 */
+	DCFlushRange(s_log, sizeof(*s_log));
 }
