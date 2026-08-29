@@ -60,6 +60,7 @@ struct gca_private_data_t {
 	u8 ir_emu_mode_idx;
 	u8 active_port;
 	bool rumble_on;
+	bool hello_rumble_pending;
 	bool switch_mapping;
 	bool switch_ir_emu_mode;
 };
@@ -194,6 +195,13 @@ int gca_driver_ops_init(usb_input_device_t *device, u16 vid, u16 pid)
 	if (ret < 0)
 		return ret;
 
+	/* Proof-of-life: buzz all ports briefly, stopped on the first report */
+	{
+		u8 hello[5] ATTRIBUTE_ALIGN(32) = {GCA_RUMBLE_CMD, 1, 1, 1, 1};
+		usb_device_driver_issue_intr_transfer(device, 1, hello, sizeof(hello));
+		priv->hello_rumble_pending = true;
+	}
+
 	ret = gca_request_data(device);
 	if (ret < 0)
 		return ret;
@@ -297,6 +305,15 @@ int gca_driver_ops_usb_async_resp(usb_input_device_t *device)
 				priv->active_port = port;
 				break;
 			}
+		}
+	}
+
+	if (priv->hello_rumble_pending) {
+		static int hello_reports = 0;
+		if (++hello_reports > 100) {
+			u8 quiet[5] ATTRIBUTE_ALIGN(32) = {GCA_RUMBLE_CMD, 0, 0, 0, 0};
+			usb_device_driver_issue_intr_transfer(device, 1, quiet, sizeof(quiet));
+			priv->hello_rumble_pending = false;
 		}
 	}
 
