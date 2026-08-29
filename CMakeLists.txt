@@ -46,6 +46,7 @@ add_executable(fakemote
     source/usb_hid.c
     source/usb_driver_ds3.c
     source/usb_driver_ds4.c
+    source/usb_driver_gca.c
 )
 
 target_include_directories(fakemote PRIVATE
