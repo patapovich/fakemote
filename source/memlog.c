@@ -8,7 +8,7 @@
 /* Ring log at a fixed MEM2 location readable from the PPC side
  * (PPC 0x93200000). GX's MEM2 heap ends at 0x93000000 and IOS
  * private memory starts at 0x933E0000, so this range is quiet. */
-#define MEMLOG_ADDR  0x13200000
+#define MEMLOG_ADDR  0x133C0000
 #define MEMLOG_MAGIC 0x464d4c47 /* FMLG */
 #define MEMLOG_SIZE  0x4000
 
