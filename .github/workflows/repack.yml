@@ -1,0 +1,16 @@
+name: Repack-d2x-beta2
+on: workflow_dispatch
+jobs:
+  repack:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download and extract
+        run: |
+          wget -q https://github.com/wiidev/d2x-cios/releases/download/d2x-v11-beta2/d2x-v11-beta2-vWii.7z
+          7z x d2x-v11-beta2-vWii.7z -obeta2
+          find beta2 -maxdepth 3 | head -40
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: d2x-v11-beta2-vWii
+          path: beta2
